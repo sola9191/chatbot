@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>OpenAI 챗봇</title>
+  <style>
+    /* 전체 페이지 스타일 */
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f2f2f2;
+      margin: 0;
+      padding: 20px;
+    }
+    /* 챗봇 컨테이너: 중앙 정렬, 배경색, 그림자 등 */
+    .chat-container {
+      background-color: #fff;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      position: relative; /* 내부 요소의 절대 위치 지정 */
+      height: 80vh; /* 화면 높이의 80% */
+      display: flex;
+      flex-direction: column;
+    }
+    /* 채팅 메시지 영역: 남은 공간 모두 사용 */
+    .chat-box {
+      flex: 1;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      padding: 10px;
+      margin-bottom: 70px; /* 하단 입력 영역 확보 */
+    }
+    /* 각 메시지 스타일 */
+    .chat-message {
+      margin-bottom: 10px;
+    }
+    /* 사용자 메시지: 오른쪽 정렬, 파란색 텍스트 */
+    .user-message {
+      text-align: right;
+      color: blue;
+    }
+    /* 봇 메시지: 왼쪽 정렬, 초록색 텍스트 */
+    .bot-message {
+      text-align: left;
+      color: green;
+    }
+    /* 입력창과 버튼 컨테이너: 하단에 고정 */
+    .input-container {
+      position: absolute;
+      bottom: 10px;
+      left: 20px;
+      right: 20px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    /* 텍스트 입력 필드 스타일 */
+    #message-input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+    }
+    /* 전송 버튼 및 대화종료 버튼 공통 스타일 */
+    button {
+      padding: 10px;
+      border: none;
+      background-color: #007BFF;
+      color: white;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    button:disabled {
+      background-color: #aaa;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <h2>OpenAI 챗봇</h2>
+    <!-- 채팅 메시지 영역 -->
+    <div class="chat-box" id="chat-box"></div>
+    
+    <!-- 입력창과 버튼 영역 -->
+    <div class="input-container">
+      <input type="text" id="message-input" placeholder="메시지를 입력하세요">
+      <button id="send-button">전송</button>
+      <button id="end-button">대화종료</button>
+    </div>
+  </div>
+
+  <script>
+    // 메시지 전송 함수: 전송 버튼 클릭 또는 엔터키 입력 시 호출
+    function sendMessage() {
+      const input = document.getElementById("message-input");
+      const userMessage = input.value;
+      if (!userMessage) return; // 입력값이 없으면 동작하지 않음
+      
+      const chatBox = document.getElementById("chat-box");
+      
+      // 사용자 메시지를 채팅창에 추가 (오른쪽 정렬)
+      const userMsgDiv = document.createElement("div");
+      userMsgDiv.className = "chat-message user-message";
+      userMsgDiv.textContent = "나: " + userMessage;
+      chatBox.appendChild(userMsgDiv);
+      
+      // /chat 엔드포인트로 POST 요청 보내기
+      fetch("/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ message: userMessage })
+      })
+      .then(response => response.json())
+      .then(data => {
+        // 서버 응답에서 봇 메시지를 받아 채팅창에 추가 (왼쪽 정렬)
+        const botMsgDiv = document.createElement("div");
+        botMsgDiv.className = "chat-message bot-message";
+        botMsgDiv.textContent = "봇: " + data.response;
+        chatBox.appendChild(botMsgDiv);
+        // 새로운 메시지가 보이도록 스크롤을 맨 아래로
+        chatBox.scrollTop = chatBox.scrollHeight;
+      })
+      .catch(error => {
+        console.error("에러 발생:", error);
+      });
+      
+      // 메시지 전송 후 입력창 초기화
+      input.value = "";
+    }
+
+    // 대화 종료 함수: 대화종료 버튼 클릭 시 호출
+    function endConversation() {
+      const chatBox = document.getElementById("chat-box");
+      // 봇이 "안녕"이라는 메시지를 출력하도록 추가
+      const botMsgDiv = document.createElement("div");
+      botMsgDiv.className = "chat-message bot-message";
+      botMsgDiv.textContent = "봇: 이용해주셔서 감사합니다. 좋은하루되세요~";
+      chatBox.appendChild(botMsgDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+      
+      // 입력창과 전송 버튼 비활성화
+      document.getElementById("message-input").disabled = true;
+      document.getElementById("send-button").disabled = true;
+      // 대화종료 버튼도 비활성화 (원하는 경우)
+      document.getElementById("end-button").disabled = true;
+    }
+
+    // 전송 버튼 클릭 이벤트 등록
+    document.getElementById("send-button").addEventListener("click", sendMessage);
+
+    // 엔터키로 메시지 전송
+    document.getElementById("message-input").addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+        sendMessage();
+      }
+    });
+
+    // 대화종료 버튼 클릭 이벤트 등록
+    document.getElementById("end-button").addEventListener("click", endConversation);
+  </script>
+</body>
+</html>
